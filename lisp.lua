@@ -1,4 +1,3 @@
-
 local function strtrim(str)
   return (str:gsub("^%s*(.-)%s*$", "%1"))
 end
