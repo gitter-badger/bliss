@@ -195,6 +195,28 @@ local special = {
   end,
   ['<'] = function(list, con)
     return interpret(list[1], con) < interpret(list[2], con)
+  end,
+  ['pcall'] = function(list, con)
+    local fun = interpret(list[1], con)
+    if type(fun) ~= 'function' then
+      return {false, 'Can not call element of type ' .. type(fun)}
+    else
+      return {pcall(fun, unpack(interpret(list[2], con)))}
+    end
+  end,
+  ['if'] = function(list, con)
+    if interpret(list[1], con) == true or type(interpret(list[1], con)) == 'table' then
+      return interpret(list[2], con)
+    else
+      if list[3] then
+        return interpret(list[3])
+      end
+    end
+  end,
+  ['run'] = function(list, con)
+    for i = 1, #list do
+      interpret(list[i], con)
+    end
   end
 }
 
@@ -241,6 +263,8 @@ function llispl.write(...)
     end
     io.write(' ')
   end
+
+  return true
 end
 
 function llispl.print(...)
@@ -256,6 +280,7 @@ function llispl.print(...)
     io.write(' ')
   end
   print('')
+  return true
 end
 
 function llispl.tabl(...)
