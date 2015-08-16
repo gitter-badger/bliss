@@ -1,5 +1,3 @@
-local JSON = (loadfile 'JSON.lua')()
-
 
 local function strtrim(str)
   return (str:gsub("^%s*(.-)%s*$", "%1"))
