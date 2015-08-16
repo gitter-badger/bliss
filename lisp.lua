@@ -13,7 +13,7 @@ end
 
 local function tokenize(inp)
   return strsplit(strtrim(inp:gsub('%(', ' ( ')
-    :gsub('%)', ' ) ')), ' ')
+  :gsub('%)', ' ) ')), ' ')
 end
 
 local function arrconcat(one, two)
@@ -26,6 +26,10 @@ local function categorize(inp)
     return {type = "literal", value = tonumber(inp)}
   elseif inp and inp:sub(1, 1) == '"' and inp:sub(#inp, #inp) == '"' then
     return {type = "literal", value = inp:sub(2, #inp - 1)}
+  elseif inp and inp:lower() == "false" or inp:lower() == "true" then
+    return {type = "literal", value = (inp:lower() == 'true')}
+  elseif inp and inp:lower() == 'null' then
+    return {type = "literal", value = nil}
   else
     return {type = "identifier", value = inp}
   end
@@ -99,27 +103,98 @@ local special = {
   end,
 
   ['+'] = function(list, con)
-    return (interpret(list[1]) + interpret(list[2]))
+    local a, b = interpret(list[1], con), interpret(list[2], con)
+    if a and b then
+      return (interpret(list[1], con) + interpret(list[2], con))
+    elseif not a and b then
+      return "No (a) value."
+    elseif a and not b then
+      return "No (b) value."
+    elseif not a and not b then
+      return "No (a) and no (b) values."
+    end
   end,
   ['-'] = function(list, con)
-    return (interpret(list[1]) - interpret(list[2]))
+    local a, b = interpret(list[1], con), interpret(list[2], con)
+    if a and b then
+      return (interpret(list[1], con) - interpret(list[2], con))
+    elseif not a and b then
+      return "No (a) value."
+    elseif a and not b then
+      return "No (b) value."
+    elseif not a and not b then
+      return "No (a) and no (b) values."
+    end
   end,
   ['*'] = function(list, con)
-    return (interpret(list[1]) * interpret(list[2]))
+    local a, b = interpret(list[1], con), interpret(list[2], con)
+    if a and b then
+      return (interpret(list[1], con) * interpret(list[2], con))
+    elseif not a and b then
+      return "No (a) value."
+    elseif a and not b then
+      return "No (b) value."
+    elseif not a and not b then
+      return "No (a) and no (b) values."
+    end
   end,
   ['/'] = function(list, con)
-    return (interpret(list[1]) / interpret(list[2]))
+    local a, b = interpret(list[1], con), interpret(list[2], con)
+    if a and b then
+      return (interpret(list[1], con) / interpret(list[2], con))
+    elseif not a and b then
+      return "No (a) value."
+    elseif a and not b then
+      return "No (b) value."
+    elseif not a and not b then
+      return "No (a) and no (b) values."
+    end
   end,
   ['%'] = function(list, con)
-    return (interpret(list[1]) % interpret(list[2]))
+    local a, b = interpret(list[1], con), interpret(list[2], con)
+    if a and b then
+      return (interpret(list[1], con) % interpret(list[2], con))
+    elseif not a and b then
+      return "No (a) value."
+    elseif a and not b then
+      return "No (b) value."
+    elseif not a and not b then
+      return "No (a) and no (b) values."
+    end
   end,
   ['pow'] = function(list, con)
-    return (interpret(list[1]) ^ interpret(list[2]))
+    local a, b = interpret(list[1], con), interpret(list[2], con)
+    if a and b then
+      return (interpret(list[1], con) ^ interpret(list[2], con))
+    elseif not a and b then
+      return "No (a) value."
+    elseif a and not b then
+      return "No (b) value."
+    elseif not a and not b then
+      return "No (a) and no (b) values."
+    end
   end,
-
   ['def'] = function(list, con)
     gctx[list[1].value] = interpret(list[2], con)
-    print(con[list[1].value])
+  end,
+  ['=='] = function(list, con)
+    print(interpret(list[1], con) == interpret(list[2], con))
+    return interpret(list[1], con) == interpret(list[2], con)
+  end,
+  ['!='] = function(list, con)
+    return interpret(list[1], con) ~= interpret(list[2], con)
+  end,
+  ['>='] = function(list, con)
+    return interpret(list[1], con) >= interpret(list[2], con)
+  end,
+  ['<='] = function(list, con)
+    return interpret(list[1], con) <= interpret(list[2], con)
+  end,
+  ['>'] = function(list, con)
+    return interpret(list[1], con) > interpret(list[2], con)
+  end,
+  ['<'] = function(list, con)
+    return interpret(list[1], con) < interpret(list[2], con)
   end
 }
 
@@ -142,7 +217,9 @@ local function interpretList(ls, con)
 end
 
 local llispl = setmetatable({}, {__index = _G})
+
 _G.gctx = cont(llispl)
+
 function _G.interpret(what, con)
   if con == nil then
     return interpret(what, gctx)
@@ -194,12 +271,34 @@ function llispl.exit(num)
   os.exit(num)
 end
 
-while true do
-  io.write('-> ')
-  local ret = interpret(parse (io.read()), gctx)
-  if ret then
-    print(ret)
-  else
-    print '<no return value>'
+function llispl.getm(t, w)
+  return t[w]
+end
+
+function llispl.setm(t, w, v)
+  t[w] = v
+  return t[w]
+end
+
+function llispl.getg(w)
+  return _G[w]
+end
+
+local file = ...
+if file then
+  local f = io.open(file, "r")
+  local content = f:read("*all")
+  f:close()
+
+  interpret(parse (content), gctx)
+else
+  while true do
+    io.write('-> ')
+    local ret = interpret(parse (io.read()), gctx)
+    if ret then
+      llispl.print(ret)
+    else
+      llispl.print '<no return value>'
+    end
   end
 end
