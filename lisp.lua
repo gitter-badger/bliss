@@ -214,9 +214,11 @@ local special = {
     end
   end,
   ['run'] = function(list, con)
-    for i = 1, #list do
+    for i = 1, #list - 1 do
       interpret(list[i], con)
     end
+
+    return interpret(list[#list], con)
   end
 }
 
