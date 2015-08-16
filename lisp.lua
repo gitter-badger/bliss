@@ -57,14 +57,21 @@ end
 local function cont(scop, paren)
   return setmetatable({}, {
     ['__index'] = function(_, k)
-      if rawget(scop, k) then
-        return rawget(scop, k)
-      elseif paren then
-        return paren[k]
+      if scop then
+        if rawget(scop, k) then
+          return rawget(scop, k)
+        elseif paren then
+          return paren[k]
+        end
+      elseif k == 'add' then
+        return function(k, v)
+          _[k] = v
+        end
       end
     end
   })
 end
+
 
 local function map(t, f)
   local ret = {}
@@ -80,24 +87,45 @@ local special = {
   lambda = function(list, con)
     return function(...)
       local args = {...}
-      local scope = (function (a)
-        local x = {}
 
-        for i = 1, #a[1] do
-          x[a[i].value] = args[i]
-        end
-        return x
-      end)(list)
+      local scope = {}
 
+      for i = 1, #list[1] do
+        scope[list[1][i].value] = args[i]
+      end
 
-      return interpret(list[2], cont(scop, con))
+      return interpret(list[2], cont(scope, con))
     end
+  end,
+
+  ['+'] = function(list, con)
+    return (interpret(list[1]) + interpret(list[2]))
+  end,
+  ['-'] = function(list, con)
+    return (interpret(list[1]) - interpret(list[2]))
+  end,
+  ['*'] = function(list, con)
+    return (interpret(list[1]) * interpret(list[2]))
+  end,
+  ['/'] = function(list, con)
+    return (interpret(list[1]) / interpret(list[2]))
+  end,
+  ['%'] = function(list, con)
+    return (interpret(list[1]) % interpret(list[2]))
+  end,
+  ['pow'] = function(list, con)
+    return (interpret(list[1]) ^ interpret(list[2]))
+  end,
+
+  ['def'] = function(list, con)
+    gctx[list[1].value] = interpret(list[2], con)
+    print(con[list[1].value])
   end
 }
 
 local function interpretList(ls, con)
   if #ls > 0 and special[ls[1].value] then
-    return special[ls[1].value](ls, con)
+    return special[ls[1].value]({unpack(ls, 2)}, con)
   else
     local list = map(ls, function(k, v)
       if type(v) == 'table' then
@@ -114,11 +142,10 @@ local function interpretList(ls, con)
 end
 
 local llispl = setmetatable({}, {__index = _G})
-
-
+_G.gctx = cont(llispl)
 function _G.interpret(what, con)
   if con == nil then
-    return interpret(what, cont(llispl))
+    return interpret(what, gctx)
   elseif type(what) == 'table' and not what.type then
     return interpretList(what, con)
   elseif what.type and what.type == "identifier" then
@@ -169,7 +196,7 @@ end
 
 while true do
   io.write('-> ')
-  local ret = interpret(parse (io.read()))
+  local ret = interpret(parse (io.read()), gctx)
   if ret then
     print(ret)
   else
