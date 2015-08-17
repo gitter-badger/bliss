@@ -346,9 +346,7 @@ if package and package.cpath then
     wrt = io.write
   end
 else
-  else
-    wrt = io.write
-  end
+  wrt = io.write
 end
 
 if file then
