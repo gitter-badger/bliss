@@ -272,15 +272,21 @@ function llispl.stringify(w)
   end
 end
 
-function llispl.treeify(list, depth)
+function llispl.treeify(list, depth, ig)
   local s = ("%sList (%s):\n"):format(((depth and depth ~= 0) and (" "):rep(depth) or ''), (strsplit(tostring(list), ' '))[2])
   local t = (" "):rep((depth or 0) + 1)
   local siz = (function(t) local s = 0; for k, v in pairs(t) do s = s + 1 end; return s end)(list)
   local i = 1
+  local ig = {} or ig
 
   for k, v in pairs(list) do
     if type(v) == 'table' then
-      s = s .. t .. llispl.stringify(k) .. ': ' .. llispl.treeify(v, (depth or 0) + 1) .. ((i == siz) and '' or '\n')
+      if v == list and not ig[k] then
+        s = s .. t .. llispl.stringify(k) .. ': ' .. '<Recursive Entry>' .. ((i == siz) and '' or '\n')
+        ig[k] = true
+      else
+        s = s .. t .. llispl.stringify(k) .. ': ' .. llispl.treeify(v, (depth or 0) + 1, ig) .. ((i == siz) and '' or '\n')
+      end
     else
       s = s .. t .. llispl.stringify(k) .. ': ' .. llispl.stringify(v) .. ((i == siz) and '' or '\n')
     end
@@ -335,6 +341,16 @@ function llispl.map(t, f)
   end
   return rt
 end
+
+function llispl.exec(p, a)
+  if os.run then -- CC, I hate you.
+    return os.run({}, p, unpack(a))
+  elseif os.execute then
+    return os.execute(p .. table.concat(a or {},  ' '))
+  end
+end
+
+llispl._env = llispl
 
 local file = ...
 if package and package.cpath then
