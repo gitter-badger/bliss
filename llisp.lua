@@ -1,3 +1,5 @@
+#!/usr/bin/env lua
+
 local function strtrim(str)
   return (str:gsub("^%s*(.-)%s*$", "%1"))
 end
@@ -99,6 +101,22 @@ local special = {
       end
 
       return interpret(list[2], cont(scope, con))
+    end
+  end,
+  defun = function(list, con)
+    gctx[list[1].value] = function(...)
+      local args = {...}
+
+      local scope = {}
+
+      for i = 1, #list[2] do
+        scope[list[2][i].value] = args[i]
+      end
+
+      for i = 3, #list do
+        interpret(list[i], cont(scope, con))
+      end
+      return interpret(list[#list], cont(scope, con))
     end
   end,
 
@@ -221,6 +239,9 @@ local special = {
     end
 
     return interpret(list[#list], con)
+  end,
+  ['!'] = function(list)
+    return not interpret(list[1], con)
   end
 }
 
@@ -242,11 +263,11 @@ local function interpretList(ls, con)
   end
 end
 
-local llispl = setmetatable({}, {__index = _G})
+local llispl = setmetatable({}, {__index = _ENV})
 
-_G.gctx = cont(llispl)
+_ENV.gctx = cont(llispl)
 
-function _G.interpret(what, con)
+function _ENV.interpret(what, con)
   if con == nil then
     return interpret(what, gctx)
   elseif type(what) == 'table' and not what.type then
@@ -331,7 +352,7 @@ function llispl.setm(t, w, v)
 end
 
 function llispl.getg(w)
-  return _G[w]
+  return _ENV[w]
 end
 
 function llispl.map(t, f)
@@ -350,9 +371,11 @@ function llispl.exec(p, a)
   end
 end
 
+
 llispl._env = llispl
 
 local file = ...
+
 if package and package.cpath then
   if package.cpath:match("%p[\\|/]?%p(%a+)") == 'so' or package.cpath:match("%p[\\|/]?%p(%a+)") == 'dylib' then
     wrt = function(x)
@@ -365,20 +388,15 @@ else
   wrt = io.write
 end
 
-if file then
-  local f = io.open(file, "r")
-  local content = f:read("*all")
-  f:close()
+local args = {...}
 
-  interpret(parse (content), gctx)
-else
-  while true do
-    wrt('-> ')
-    local ret = interpret(parse (io.read()), gctx)
-    if ret then
-      llispl.print(ret)
-    else
-      llispl.print '<no return value>'
-    end
+gctx['arg'] = args
+while true do
+  wrt('-> ')
+  local ret = interpret(parse (io.read()), gctx)
+  if ret then
+    llispl.print(ret)
+  else
+    llispl.print '<no return value>'
   end
 end
