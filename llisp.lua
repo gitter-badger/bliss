@@ -195,9 +195,6 @@ local special = {
   ['def'] = function(list, con)
     gctx[list[1].value] = interpret(list[2], con)
   end,
-  ['cat'] = function(list, con)
-    return tostring(interpret(list[1], con)) .. tostring(interpret(list[2], con))
-  end,
   ['=='] = function(list, con)
     return interpret(list[1], con) == interpret(list[2], con)
   end,
@@ -240,8 +237,23 @@ local special = {
 
     return interpret(list[#list], con)
   end,
-  ['!'] = function(list)
+  ['!'] = function(list, con)
     return not interpret(list[1], con)
+  end,
+  ['repeat'] = function(list, con)
+    while true do
+      for i = 1, #list do
+        interpret(list[i], con)
+      end
+    end
+  end,
+  ['str'] = function(list, con)
+    local r = ''
+    for i = 1, #list do
+      r = r .. list[i].value .. ' '
+    end
+
+    return r
   end
 }
 
@@ -288,12 +300,16 @@ function llispl.stringify(w)
       r = r .. ("{%s = %s}"):format(llispl.stringify(k), llispl.stringify(v))
     end
     return r .. ']>'
+  elseif type(w) == 'string' then
+    return w
   else
     return tostring(w)
   end
 end
 
 function llispl.treeify(list, depth, ig)
+  if type(depth) ~= 'number' then depth = 0 end
+
   local s = ("%sList (%s):\n"):format(((depth and depth ~= 0) and (" "):rep(depth) or ''), (strsplit(tostring(list), ' '))[2])
   local t = (" "):rep((depth or 0) + 1)
   local siz = (function(t) local s = 0; for k, v in pairs(t) do s = s + 1 end; return s end)(list)
@@ -327,6 +343,10 @@ end
 
 function llispl.tabl(...)
   return {...}
+end
+
+function llispl.prinl(s)
+  print(s)
 end
 
 function llispl.exit(num)
@@ -371,6 +391,24 @@ function llispl.exec(p, a)
   end
 end
 
+function llispl.lua (...)
+  local s = 'return '
+  for k, v in pairs({...}) do
+    if type(v) == 'string' then
+      s = s .. v
+    end
+  end
+
+  return load(s)
+end
+
+function llispl.read()
+  return io.read()
+end
+
+function llispl.eval(s)
+  return interpret(parse(s), gctx)
+end
 
 llispl._env = llispl
 
@@ -389,8 +427,17 @@ else
 end
 
 local args = {...}
+if args[1] == 'file' and args[2] then
+  local f = io.open(args[2], 'r')
+  gctx['arg'] = {unpack(args, 3)}
+  interpret(parse (f:read("*all")), gctx)
+  f:close()
+
+  os.exit(0)
+end
 
 gctx['arg'] = args
+
 while true do
   wrt('-> ')
   local ret = interpret(parse (io.read()), gctx)
