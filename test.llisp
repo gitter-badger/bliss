@@ -1,3 +1,1 @@
-(def x 1)
-(defun y (x) (+ x z))
-(print (y 2))
+(print (treeify (1 2 3 (4 5 6))))

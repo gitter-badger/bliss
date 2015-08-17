@@ -177,8 +177,10 @@ local special = {
   ['def'] = function(list, con)
     gctx[list[1].value] = interpret(list[2], con)
   end,
+  ['cat'] = function(list, con)
+    return tostring(interpret(list[1], con)) .. tostring(interpret(list[2], con))
+  end,
   ['=='] = function(list, con)
-    print(interpret(list[1], con) == interpret(list[2], con))
     return interpret(list[1], con) == interpret(list[2], con)
   end,
   ['!='] = function(list, con)
@@ -256,30 +258,41 @@ function _G.interpret(what, con)
   end
 end
 
-function llispl.write(...)
-  for k, v in pairs({...}) do
-    if type(v) == 'function' then
-      io.write('<Function>')
-    else
-      io.write(tostring(v))
+function llispl.stringify(w)
+  if type(w) == 'function' then
+    return ('<Function (%s)>'):format((strsplit(tostring(w), ' '))[2])
+  elseif type(w) == 'table' then
+    local r = ('<List (%s) ['):format((strsplit(tostring(w), ' '))[2])
+    for k, v in pairs(w) do
+      r = r .. ("{%s = %s}"):format(llispl.stringify(k), llispl.stringify(v))
     end
-    io.write(' ')
+    return r .. ']>'
+  else
+    return tostring(w)
+  end
+end
+
+function llispl.treeify(list, depth)
+  local s = ("%sList (%s):\n"):format(((depth and depth ~= 0) and (" "):rep(depth) or ''), (strsplit(tostring(list), ' '))[2])
+  local t = (" "):rep((depth or 0) + 1)
+  local siz = (function(t) local s = 0; for k, v in pairs(t) do s = s + 1 end; return s end)(list)
+  local i = 1
+
+  for k, v in pairs(list) do
+    if type(v) == 'table' then
+      s = s .. t .. llispl.stringify(k) .. ': ' .. llispl.treeify(v, (depth or 0) + 1) .. ((i == siz) and '' or '\n')
+    else
+      s = s .. t .. llispl.stringify(k) .. ': ' .. llispl.stringify(v) .. ((i == siz) and '' or '\n')
+    end
+    i = i + 1
   end
 
-  return true
+  return s
 end
 
 function llispl.print(...)
   for k, v in pairs({...}) do
-    if type(v) == 'table' then
-      llispl.write(unpack(v))
-    elseif type(v) == 'function' then
-      io.write('<Function>')
-    else
-      io.write(tostring(v))
-    end
-
-    io.write(' ')
+    io.write(llispl.stringify(v) .. ' ')
   end
   print('')
   return true
@@ -311,7 +324,24 @@ function llispl.getg(w)
   return _G[w]
 end
 
+function llispl.map(t, f)
+  local rt = {}
+  for k, v in pairs(t) do
+    rt[k] = f(k, v)
+  end
+  return rt
+end
+
 local file = ...
+
+if package.cpath:match("%p[\\|/]?%p(%a+)") == 'so' or package.cpath:match("%p[\\|/]?%p(%a+)") == 'dylib' then
+  wrt = function(x)
+    return io.write(string.char(27) .. '[1;32m'.. x .. string.char(27) .. '[0m')
+  end
+else
+  wrt = io.write
+end
+
 if file then
   local f = io.open(file, "r")
   local content = f:read("*all")
@@ -320,7 +350,7 @@ if file then
   interpret(parse (content), gctx)
 else
   while true do
-    io.write('-> ')
+    wrt('-> ')
     local ret = interpret(parse (io.read()), gctx)
     if ret then
       llispl.print(ret)
