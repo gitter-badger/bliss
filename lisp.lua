@@ -303,7 +303,7 @@ function llispl.tabl(...)
 end
 
 function llispl.exit(num)
-  if package.cpath:match("%p[\\|/]?%p(%a+)") == 'so' or package.cpath:match("%p[\\|/]?%p(%a+)") == 'dylib' then
+  if package and package.cpath and package.cpath:match("%p[\\|/]?%p(%a+)") == 'so' or package.cpath:match("%p[\\|/]?%p(%a+)") == 'dylib' then
     print(string.char(27) .. '[1;31mTerminated.' .. string.char(27) .. '[0m')
   else
     print('Terminated.')
@@ -334,7 +334,7 @@ end
 
 local file = ...
 
-if package.cpath:match("%p[\\|/]?%p(%a+)") == 'so' or package.cpath:match("%p[\\|/]?%p(%a+)") == 'dylib' then
+if package and package.cpath and package.cpath:match("%p[\\|/]?%p(%a+)") == 'so' or package.cpath:match("%p[\\|/]?%p(%a+)") == 'dylib' then
   wrt = function(x)
     return io.write(string.char(27) .. '[1;32m'.. x .. string.char(27) .. '[0m')
   end
