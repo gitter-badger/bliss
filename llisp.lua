@@ -1,226 +1,125 @@
 #!/usr/bin/env lua
+#!/usr/bin/env lua
 
-local function strtrim(str)
-  return (str:gsub("^%s*(.-)%s*$", "%1"))
-end
+function tokenize (exp)
+  local sexpr, word, in_str = {{}}, '', false
 
-local function strsplit(str, sep)
-  local sep, fields = sep or ":", {}
-  local pattern = string.format("([^%s]+)", sep)
-  str:gsub(pattern, function(c)
-    fields[#fields+1] = c
-  end)
-  return fields
-end
+  for i = 1, #exp do
+    local c = exp:sub(i, i)
 
-local function tokenize(inp)
-  return strsplit(strtrim(inp:gsub('%(', ' ( ')
-  :gsub('%)', ' ) ')), ' ')
-end
+    if c == '(' and not in_str then
+      table.insert(sexpr, {})
+    elseif c == ')' and not in_str then
+      if #word > 0 then
+        table.insert(sexpr[#sexpr], word)
+        word = ''
+      end
 
-local function arrconcat(one, two)
-  table.insert(one, two)
-  return one
-end
-
-local function categorize(inp)
-  if inp and tonumber(inp) ~= nil then
-    return {type = "literal", value = tonumber(inp)}
-  elseif inp and inp:sub(1, 1) == '"' and inp:sub(#inp, #inp) == '"' then
-    return {type = "literal", value = inp:sub(2, #inp - 1)}
-  elseif inp and inp:lower() == "false" or inp:lower() == "true" then
-    return {type = "literal", value = (inp:lower() == 'true')}
-  elseif inp and inp:lower() == 'null' then
-    return {type = "literal", value = nil}
-  else
-    return {type = "identifier", value = inp}
-  end
-end
-
-
-local function paren(inp, ls)
-  if ls == nil then
-    return paren(inp, {})
-  else
-    local tok = table.remove(inp, 1)
-    if tok == nil then
-      return table.remove(ls)
-    elseif tok == '(' then
-      arrconcat(ls, paren(inp, {}))
-      return paren(inp, ls)
-    elseif tok == ')' then
-      return ls
+      local t = table.remove(sexpr)
+      table.insert(sexpr[#sexpr], t)
+    elseif c == ' ' or c == '\t' or c == '\n' and not in_str then
+      if #word > 0 then
+        table.insert(sexpr[#sexpr], word)
+        word = ''
+      end
+    elseif c == '"' then
+      word = word .. '"'
+      in_str = not in_str
     else
-      return paren(inp, arrconcat(ls, categorize(tok)))
+      word = word .. c
     end
   end
+
+  return sexpr[1]
 end
 
-local function parse(input)
-  return paren(tokenize(input))
-end
+function categorize(tokens)
+  if tokens then
+    local ret = {}
 
-local function cont(scop, paren)
-  return setmetatable({}, {
-    ['__index'] = function(_, k)
-      if scop then
-        if rawget(scop, k) then
-          return rawget(scop, k)
-        elseif paren then
-          return paren[k]
-        end
-      elseif k == 'add' then
-        return function(k, v)
-          _[k] = v
+    for i = 1, #tokens do
+      if type(tokens[i]) == 'table' then
+        table.insert(ret, categorize(tokens[i]))
+      elseif type(tokens[i]) == 'string' then
+        if tonumber(tokens[i]) ~= nil then
+          table.insert(ret, {
+            type = 'literal',
+            value = tonumber(tokens[i])
+          })
+        elseif tokens[i]:sub(1, 1) == '"' and tokens[i]:sub(#tokens[i], #tokens[i]) == '"' then
+          table.insert(ret, {
+            type = 'literal',
+            value = tokens[i]:sub(2, #tokens[i] - 1)
+          })
+        elseif tokens[i]:sub(1, 1) == '\'' then
+          table.insert(ret, {
+            type = 'literal',
+            value = tokens[i]:sub(2, #tokens[i])
+          })
+        elseif tokens[i]:lower() == 'true' or tokens[i] == 'false' then
+          table.insert(ret, {
+            type = 'literal',
+            value = tokens[i]:lower() == 'true'
+          })
+        else
+          table.insert(ret, {
+            type = 'identifier',
+            value = tokens[i]
+          })
         end
       end
     end
-  })
-end
-
-
-local function map(t, f)
-  local ret = {}
-
-  for k, v in pairs(t) do
-    ret[k] = f(k, v)
-  end
-
   return ret
+  end
 end
 
-local special = {
-  lambda = function(list, con)
-    return function(...)
-      local args = {...}
+---
 
-      local scope = {}
+local maths = {
+  ['+'] = function(l, c)
+    local acc = 0
 
-      for i = 1, #list[1] do
-        scope[list[1][i].value] = args[i]
-      end
+    for i = 1, #l do
+      acc = acc + interpret(l[i], c)
+    end
 
-      return interpret(list[2], cont(scope, con))
-    end
+    return acc
   end,
-  defun = function(list, con)
-    gctx[list[1].value] = function(...)
-      local args = {...}
+  ['-'] = function(l, c)
+    local acc = interpret(l[1], c)
 
-      local scope = {}
+    for i = 2, #l do
+      acc = acc - interpret(l[i], c)
+    end
 
-      for i = 1, #list[2] do
-        scope[list[2][i].value] = args[i]
-      end
+    return acc
+  end,
+  ['*'] = function(l, c)
+    local acc = interpret(l[1], c)
 
-      for i = 3, #list do
-        interpret(list[i], cont(scope, con))
-      end
-      return interpret(list[#list], cont(scope, con))
+    for i = 2, #l do
+      acc = acc * interpret(l[i], c)
     end
-  end,
 
-  ['+'] = function(list, con)
-    local a, b = interpret(list[1], con), interpret(list[2], con)
-    if a and b then
-      return (interpret(list[1], con) + interpret(list[2], con))
-    elseif not a and b then
-      return "No (a) value."
-    elseif a and not b then
-      return "No (b) value."
-    elseif not a and not b then
-      return "No (a) and no (b) values."
-    end
+    return acc
   end,
-  ['-'] = function(list, con)
-    local a, b = interpret(list[1], con), interpret(list[2], con)
-    if a and b then
-      return (interpret(list[1], con) - interpret(list[2], con))
-    elseif not a and b then
-      return "No (a) value."
-    elseif a and not b then
-      return "No (b) value."
-    elseif not a and not b then
-      return "No (a) and no (b) values."
-    end
-  end,
-  ['*'] = function(list, con)
-    local a, b = interpret(list[1], con), interpret(list[2], con)
-    if a and b then
-      return (interpret(list[1], con) * interpret(list[2], con))
-    elseif not a and b then
-      return "No (a) value."
-    elseif a and not b then
-      return "No (b) value."
-    elseif not a and not b then
-      return "No (a) and no (b) values."
-    end
-  end,
-  ['/'] = function(list, con)
-    local a, b = interpret(list[1], con), interpret(list[2], con)
-    if a and b then
-      return (interpret(list[1], con) / interpret(list[2], con))
-    elseif not a and b then
-      return "No (a) value."
-    elseif a and not b then
-      return "No (b) value."
-    elseif not a and not b then
-      return "No (a) and no (b) values."
-    end
-  end,
-  ['%'] = function(list, con)
-    local a, b = interpret(list[1], con), interpret(list[2], con)
-    if a and b then
-      return (interpret(list[1], con) % interpret(list[2], con))
-    elseif not a and b then
-      return "No (a) value."
-    elseif a and not b then
-      return "No (b) value."
-    elseif not a and not b then
-      return "No (a) and no (b) values."
-    end
-  end,
-  ['pow'] = function(list, con)
-    local a, b = interpret(list[1], con), interpret(list[2], con)
-    if a and b then
-      return (interpret(list[1], con) ^ interpret(list[2], con))
-    elseif not a and b then
-      return "No (a) value."
-    elseif a and not b then
-      return "No (b) value."
-    elseif not a and not b then
-      return "No (a) and no (b) values."
-    end
-  end,
-  ['def'] = function(list, con)
-    gctx[list[1].value] = interpret(list[2], con)
-  end,
-  ['=='] = function(list, con)
-    return interpret(list[1], con) == interpret(list[2], con)
-  end,
-  ['!='] = function(list, con)
-    return interpret(list[1], con) ~= interpret(list[2], con)
-  end,
-  ['>='] = function(list, con)
-    return interpret(list[1], con) >= interpret(list[2], con)
-  end,
-  ['<='] = function(list, con)
-    return interpret(list[1], con) <= interpret(list[2], con)
-  end,
-  ['>'] = function(list, con)
-    return interpret(list[1], con) > interpret(list[2], con)
-  end,
-  ['<'] = function(list, con)
-    return interpret(list[1], con) < interpret(list[2], con)
-  end,
-  ['pcall'] = function(list, con)
-    local fun = interpret(list[1], con)
-    if type(fun) ~= 'function' then
-      return {false, 'Can not call element of type ' .. type(fun)}
-    else
-      return {pcall(fun, unpack(interpret(list[2], con)))}
-    end
-  end,
+  ['/'] = function(l, c) return interpret(l[1], c) / interpret(l[2], c) end,
+  ['%'] = function(l, c) return interpret(l[1], c) % interpret(l[2], c) end,
+  ['**'] = function(l, c) return interpret(l[1], c) ^ interpret(l[2], c) end,
+}
+
+local tests = {
+  ['=='] = function(list, con) return interpret(list[1], con) == interpret(list[2], con) end,
+  ['!='] = function(list, con) return interpret(list[1], con) ~= interpret(list[2], con) end,
+  ['>='] = function(list, con) return interpret(list[1], con) >= interpret(list[2], con) end,
+  ['<='] = function(list, con) return interpret(list[1], con) <= interpret(list[2], con) end,
+  ['>']  = function(list, con) return interpret(list[1], con) > interpret(list[2], con)  end,
+  ['<']  = function(list, con) return interpret(list[1], con) < interpret(list[2], con)  end,
+  ['!']  = function(list, con) return not interpret(list[1], con)                        end
+}
+
+local keywords = {
+  ['def'] = function(list, con) con[list[1].value] = interpret(list[2], con) end,
   ['if'] = function(list, con)
     if interpret(list[1], con) == true or type(interpret(list[1], con)) == 'table' then
       return interpret(list[2], con)
@@ -237,25 +136,75 @@ local special = {
 
     return interpret(list[#list], con)
   end,
-  ['!'] = function(list, con)
-    return not interpret(list[1], con)
-  end,
-  ['repeat'] = function(list, con)
-    while true do
-      for i = 1, #list do
-        interpret(list[i], con)
-      end
-    end
-  end,
-  ['str'] = function(list, con)
-    local r = ''
-    for i = 1, #list do
-      r = r .. list[i].value .. ' '
-    end
+  ['lambda'] = function(list, con)
+    return function(...)
+      local args = {...}
 
-    return r
+      local scope = {}
+
+      for i = 1, #list[1] do
+        scope[list[1][i].value] = args[i]
+      end
+
+      return interpret(list[2], context(scope, con))
+    end
+  end,
+  ['defun'] = function(list, con)
+    con[list[1].value] = function(...)
+      local args = {...}
+
+      local scope = {}
+
+      for i = 1, #list[2] do
+        scope[list[2][i].value] = args[i]
+      end
+
+      for i = 3, #list do
+        interpret(list[i], context(scope, con))
+      end
+      return interpret(list[#list], context(scope, con))
+    end
+  end,
+  ['pcall'] = function(list, con)
+    local fun = interpret(list[1], con)
+    if type(fun) ~= 'function' then
+      return {false, 'Can not call element of type ' .. type(fun)}
+    else
+      return {pcall(fun, unpack(interpret(list[2], con)))}
+    end
   end
 }
+
+
+---
+
+function context(scope, parent)
+  return setmetatable({}, {
+    ['__index'] = function(_, k)
+      if rawget(_, k) then return rawget(_, k)
+      elseif scope and scope[k] then return scope[k]
+      elseif parent and parent[k] then return parent[k] end
+    end
+  })
+end
+
+local special = (function(...)
+  local ret = {}
+
+  for k, v in pairs({...}) do
+    for l, b in pairs(v) do
+      ret[l] = b
+    end
+  end
+
+  return ret
+end)(maths, keywords, tests)
+
+local function map(t, f)
+  local x = {}
+  for k, v in pairs(t) do x[k] = f(k, v) end
+  return x
+end
 
 local function interpretList(ls, con)
   if #ls > 0 and special[ls[1].value] then
@@ -268,18 +217,23 @@ local function interpretList(ls, con)
     end)
 
     if type(list[1]) == 'function' then
-      return list[1](unpack(list, 2))
+      local l = {pcall(list[1], unpack(list, 2))}
+      if not l[1] then
+        return {false, l[2]}
+      else
+        return unpack(l, 2)
+      end
     else
       return list
     end
   end
 end
 
-local llispl = setmetatable({}, {__index = _ENV})
+llispl = setmetatable({}, {__index = _ENV})
 
-_ENV.gctx = cont(llispl)
+gctx = context(llispl)
 
-function _ENV.interpret(what, con)
+function interpret(what, con)
   if con == nil then
     return interpret(what, gctx)
   elseif type(what) == 'table' and not what.type then
@@ -291,26 +245,40 @@ function _ENV.interpret(what, con)
   end
 end
 
-function llispl.stringify(w)
-  if type(w) == 'function' then
-    return ('<Function (%s)>'):format((strsplit(tostring(w), ' '))[2])
-  elseif type(w) == 'table' then
-    local r = ('<List (%s) ['):format((strsplit(tostring(w), ' '))[2])
-    for k, v in pairs(w) do
-      r = r .. ("{%s = %s}"):format(llispl.stringify(k), llispl.stringify(v))
-    end
-    return r .. ']>'
-  elseif type(w) == 'string' then
-    return w
+function parse(s)
+  return categorize(tokenize(s))
+end
+
+---
+
+function llispl.stringify(...)
+  local ret = '('
+  if #({...}) == 1 and type(({...})[1]) == 'table' then
+    return llispl.stringify(unpack(({...})[1]))
   else
-    return tostring(w)
+    local max = (function(x)
+      local r = 0; for k, v in pairs(x) do r = r + 1 end; return r
+    end)({...})
+    for k, v in pairs({...}) do
+      if type(v) == 'string' then
+        ret = ret .. '"' .. v .. '"' .. (k == max and '' or ' ')
+      elseif type(v) == 'table' then
+        ret = ret .. llispl.stringify(unpack(v)) .. (k == max and '' or ' ')
+      elseif type(v) == 'function' then
+        ret = ret .. '\'<function>' .. (k == max and '' or ' ')
+      else
+        ret = ret .. tostring(v) .. (k == max and '' or ' ')
+      end
+    end
   end
+
+  return ret .. ')'
 end
 
 function llispl.treeify(list, depth, ig)
   if type(depth) ~= 'number' then depth = 0 end
 
-  local s = ("%sList (%s):\n"):format(((depth and depth ~= 0) and (" "):rep(depth) or ''), (strsplit(tostring(list), ' '))[2])
+  local s = ("%sList (%s):\n"):format(((depth and depth ~= 0) and (" "):rep(depth) or ''), (llispl.split(tostring(list), ' '))[2])
   local t = (" "):rep((depth or 0) + 1)
   local siz = (function(t) local s = 0; for k, v in pairs(t) do s = s + 1 end; return s end)(list)
   local i = 1
@@ -341,25 +309,35 @@ function llispl.print(...)
   return true
 end
 
-function llispl.tabl(...)
-  return {...}
+function llispl.split(str, sep)
+  local sep, fields = sep or ":", {}
+  local pattern = string.format("([^%s]+)", sep)
+  str:gsub(pattern, function(c)
+    fields[#fields+1] = c
+  end)
+
+  return fields
 end
 
-function llispl.prinl(s)
-  print(s)
+function llispl.exit(status)
+  os.exit(status or 0)
 end
 
-function llispl.exit(num)
-  if package and package.cpath then
-    if package.cpath:match("%p[\\|/]?%p(%a+)") == 'so' or package.cpath:match("%p[\\|/]?%p(%a+)") == 'dylib' then
-      print(string.char(27) .. '[1;31mTerminated.' .. string.char(27) .. '[0m')
+function llispl.join(...)
+  local ret = {}
+  llispl.print(...)
+  for k, v in pairs({...}) do
+    if type(v) == 'table' then
+      for l, b in pairs(v) do
+
+        ret[#ret + 1] = b
+      end
     else
-      print('Terminated.')
+      ret[#ret + 1] = v
     end
-  else
-    print('Terminated.')
   end
-  os.exit(num)
+
+  return ret
 end
 
 function llispl.getm(t, w)
@@ -375,75 +353,22 @@ function llispl.getg(w)
   return _ENV[w]
 end
 
-function llispl.map(t, f)
-  local rt = {}
-  for k, v in pairs(t) do
-    rt[k] = f(k, v)
-  end
-  return rt
-end
-
-function llispl.exec(p, a)
-  if os.run then -- CC, I hate you.
-    return os.run({}, p, unpack(a))
-  elseif os.execute then
-    return os.execute(p .. table.concat(a or {},  ' '))
+function llispl.map(fn, tab)
+  for i = 1, #tab do
+    fn(tab[i])
   end
 end
 
-function llispl.lua (...)
-  local s = 'return '
-  for k, v in pairs({...}) do
-    if type(v) == 'string' then
-      s = s .. v
-    end
+llispl['map!'] = function(fn, tab)
+  for i = 1, #tab do
+    tab[i] = fn(tab[i])
   end
 
-  return load(s)
+  return tab
 end
-
-function llispl.read()
-  return io.read()
-end
-
-function llispl.eval(s)
-  return interpret(parse(s), gctx)
-end
-
-llispl._env = llispl
-
-local file = ...
-
-if package and package.cpath then
-  if package.cpath:match("%p[\\|/]?%p(%a+)") == 'so' or package.cpath:match("%p[\\|/]?%p(%a+)") == 'dylib' then
-    wrt = function(x)
-      return io.write(string.char(27) .. '[1;32m'.. x .. string.char(27) .. '[0m')
-    end
-  else
-    wrt = io.write
-  end
-else
-  wrt = io.write
-end
-
-local args = {...}
-if args[1] == 'file' and args[2] then
-  local f = io.open(args[2], 'r')
-  gctx['arg'] = {unpack(args, 3)}
-  interpret(parse (f:read("*all")), gctx)
-  f:close()
-
-  os.exit(0)
-end
-
-gctx['arg'] = args
-
 while true do
-  wrt('-> ')
-  local ret = interpret(parse (io.read()), gctx)
-  if ret then
-    llispl.print(ret)
-  else
-    llispl.print '<no return value>'
-  end
+  io.write('-> ')
+  local s = io.read()
+  io.write('return: ')
+  print(llispl.stringify(interpret(parse(s), gctx)))
 end
