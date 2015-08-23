@@ -1,3 +1,3 @@
-# LLisp
-Lisp, with a lua twist.
+# Bliss 
+Scheme, with a lua twist.
 
