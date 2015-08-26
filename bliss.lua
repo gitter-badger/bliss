@@ -1,5 +1,4 @@
 #!/usr/bin/env lua
-#!/usr/bin/env lua
 
 function tokenize (exp)
   local sexpr, word, in_str = {{}}, '', false
