@@ -1,4 +1,7 @@
-(for i 1 (len arg)
-	(write (getm arg i) " "))
+(defun fib (x)
+	(if (< x 2)
+		x
+		(+ (fib (- x 1)) (fib (- x 2)))))
 
-(pprint)
+(pprint "First 10 fib numbers: ")
+(for i 1 10 (pprint (fib i)))
