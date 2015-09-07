@@ -298,7 +298,7 @@ local function interpretList(ls, con)
   end
 end
 
-llispl = setmetatable({}, {__index = _G})
+llispl = setmetatable({}, {__index = _ENV})
 
 gctx = context(llispl)
 
@@ -426,7 +426,7 @@ function llispl.setm(t, w, v)
 end
 
 function llispl.getg(w)
-  return _G[w]
+  return _ENV[w]
 end
 
 function llispl.map(fn, tab)
@@ -631,7 +631,7 @@ end
 
 function llispl.luasym(w)
 	local x = llispl.split(w, '.')
-	local ret = _G[x[1]]
+	local ret = _ENV[x[1]]
 
 	if #x >= 2 then
 		for i = 2, #x do
