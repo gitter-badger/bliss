@@ -6,9 +6,9 @@ function tokenize (exp)
   for i = 1, #exp do
     local c = exp:sub(i, i)
 
-    if c == '(' and not in_str then
+    if (c == '(') and not in_str then
       table.insert(sexpr, {})
-    elseif c == ')' and not in_str then
+    elseif (c == ')') and not in_str then
       if #word > 0 then
         table.insert(sexpr[#sexpr], word)
         word = ''
@@ -16,7 +16,7 @@ function tokenize (exp)
 
       local t = table.remove(sexpr)
       table.insert(sexpr[#sexpr], t)
-    elseif c == ' ' or c == '\t' or c == '\n' and not in_str then
+    elseif (c == ' ' or c == '\t' or c == '\n') and not in_str then
       if #word > 0 then
         table.insert(sexpr[#sexpr], word)
         word = ''
@@ -85,13 +85,7 @@ local maths = {
     return acc
   end,
   ['-'] = function(l, c)
-    local acc = interpret(l[1], c)
-
-    for i = 2, #l do
-      acc = acc - interpret(l[i], c)
-    end
-
-    return acc
+    return interpret(l[1], c) - interpret(l[2], c)
   end,
   ['*'] = function(l, c)
     local acc = interpret(l[1], c)
@@ -124,7 +118,7 @@ local keywords = {
       return interpret(list[2], con)
     else
       if list[3] then
-        return interpret(list[3])
+        return interpret(list[3], con)
       end
     end
   end,
@@ -145,7 +139,7 @@ local keywords = {
         scope[list[1][i].value] = args[i]
       end
 
-      return interpret(list[2], context(scope, con))
+	    return interpret(list[#list], con)
     end
   end,
   ['defun'] = function(list, con)
@@ -171,7 +165,32 @@ local keywords = {
     else
       return {pcall(fun, unpack(interpret(list[2], con)))}
     end
-  end
+  end,
+	['loop'] = function(list, con)
+		while true do
+			for i = 1, #list do
+				interpret(list[i], con)
+			end
+		end
+	end,
+	['while'] = function(list, con)
+		while interpret(list[1], con) == true do
+			for i = 2, #list do
+				interpret(list[2], con)
+			end
+		end
+	end,
+	['for'] = function(list, con)
+		local label, start, stop = list[1].value,
+			interpret(list[2], con), interpret(list[3], con)
+
+		for i = start, stop do
+			con[label] = i
+			for i = 3, #list do
+				interpret(list[i], con)
+			end
+		end
+	end
 }
 
 
@@ -301,11 +320,16 @@ function llispl.treeify(list, depth, ig)
 end
 
 function llispl.print(...)
-  for k, v in pairs({...}) do
-    io.write(llispl.stringify(v) .. ' ')
-  end
-  print('')
+  print(llispl.stringify({...}))
   return true
+end
+
+function llispl.pprint(...)
+	for k, v in pairs({...}) do
+		io.write(tostring(v) .. ' ')
+	end
+	print()
+	return true
 end
 
 function llispl.split(str, sep)
@@ -352,22 +376,84 @@ function llispl.getg(w)
   return _ENV[w]
 end
 
-function llispl.map(fn, tab)
+function llispl.map(tab, fn)
   for i = 1, #tab do
     fn(tab[i])
   end
 end
 
-llispl['map!'] = function(fn, tab)
+llispl['map!'] = function(tab, fn)
   for i = 1, #tab do
     tab[i] = fn(tab[i])
   end
 
   return tab
 end
+
+
+function llispl.load(str)
+	local snip = parse(str)
+
+	return function()
+		return interpret(snip, gctx)
+	end
+end
+
+function llispl.eval(str)
+	return interpret(parse(str), gctx)
+end
+
+function llispl.read()
+	return io.read()
+end
+
+function llispl.fopen(path, mode)
+	return io.open(path, mode)
+end
+
+function llispl.fread(file, what)
+	return not file.read and {false, 'not a file'} or
+		file:read(what)
+end
+
+function llispl.fwrite(file, what)
+	return not file.write and {false, 'not a file'} or
+		file:write(what)
+end
+
+function llispl.loadf(file)
+	local x = io.open(file, 'r')
+	local what = x:read '*all'
+	x:close()
+	local snip = parse(what)
+
+	return function()
+		return interpret(snip, gctx)
+	end
+end
+
+function llispl.evalf(file)
+	return llispl.loadf(file)()
+end
+
+
 while true do
   io.write('-> ')
-  local s = io.read()
-  io.write('return: ')
-  print(llispl.stringify(interpret(parse(s), gctx)))
+  local ok, s = pcall(io.read)
+	if not ok then
+		print()
+		os.exit(1)
+	end
+
+	if s then
+		pcall(function()
+			local result = llispl.stringify(interpret(parse(s), gctx))
+
+		  io.write('return: ')
+		  print(result)
+		end)
+	else
+		print()
+		os.exit(1)
+	end
 end
