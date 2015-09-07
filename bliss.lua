@@ -436,6 +436,10 @@ function llispl.evalf(file)
 	return llispl.loadf(file)()
 end
 
+function llispl.write(x)
+	io.write(x)
+end
+
 
 while true do
   io.write('-> ')
