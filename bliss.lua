@@ -1,7 +1,7 @@
 #!/usr/bin/env lua
 
 function tokenize (exp)
-  local sexpr, word, in_str = {{}}, '', false
+  local sexpr, word, in_str, in_comment = {{}}, '', false, false
 
   for i = 1, #exp do
     local c = exp:sub(i, i)
@@ -17,14 +17,18 @@ function tokenize (exp)
       local t = table.remove(sexpr)
       table.insert(sexpr[#sexpr], t)
     elseif (c == ' ' or c == '\t' or c == '\n') and not in_str then
-      if #word > 0 then
+			if in_comment then
+				in_comment = (c ~= '\n')
+			elseif #word > 0 then
         table.insert(sexpr[#sexpr], word)
         word = ''
       end
     elseif c == '"' then
       word = word .. '"'
       in_str = not in_str
-    else
+    elseif c == ';' then
+			in_comment = true
+		else
       word = word .. c
     end
   end
@@ -403,7 +407,7 @@ function llispl.getg(w)
   return _ENV[w]
 end
 
-function llispl.map(tab, fn)
+function llispl.map(fn, tab)
   for i = 1, #tab do
     fn(tab[i])
   end
@@ -476,7 +480,7 @@ llispl['operator#ge']  = function(n,m) return n >= m end;
 llispl['operator#ne']  = function(n,m) return n ~= m end;
 
 
-llispl['map!'] = function(tab, fn)
+llispl['map!'] = function(fn, tab)
   for i = 1, #tab do
     tab[i] = fn(tab[i])
   end
@@ -530,7 +534,9 @@ function llispl.evalf(file)
 end
 
 function llispl.write(...)
-	io.write(...)
+	for k, v in pairs({...}) do
+		io.write((type(v) == 'table' or type(v) == 'function') and llispl.stringify(v) or tostring(v) .. ' ')
+	end
 end
 
 function llispl.slice(w, s, t)
@@ -572,7 +578,7 @@ ret.load, ret.loadf, ret.eval, ret.evalf = llispl.load,
 
 if arg[1] == '--repl' then
 	ret.repl()
-elseif arg[1] then
+elseif arg[1] ~= '-' then
 	llispl.arg = (function (w, s)
 		local ret = {}
 		for i = s, t or #w do
@@ -583,6 +589,8 @@ elseif arg[1] then
 	end)(arg, 2)
 
 	ret.evalf(arg[1])
+elseif arg[1] == '-' then
+	ret.eval(io.read '*all')
 end
 
 return ret
