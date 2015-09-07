@@ -615,6 +615,12 @@ function llispl.parallel(...)
 			for k, v in pairs(llispl.flatten(...)) do
 				routines[#routines + 1] = coroutine.create(v)
 			end
+		elseif op == 'gc' then
+			for i = 1, #routines do
+				if coroutine.status(routines[i]) == 'dead' then
+					routines[i] = nil
+				end
+			end
 		end
 	end
 end
