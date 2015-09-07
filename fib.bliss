@@ -1,4 +1,4 @@
-(defun fib (x) (if (< x 2) x (+ (fib (- x 1)) (fib (- x 2)))))
+(for i 1 (len arg)
+	(write (getm arg i) " "))
 
-
-(pprint (fib 2))
+(pprint)

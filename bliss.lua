@@ -139,7 +139,12 @@ local keywords = {
         scope[list[1][i].value] = args[i]
       end
 
-	    return interpret(list[#list], con)
+			if #list > 2 then
+		    for i = 2, #list do
+	        interpret(list[i], context(scope, con))
+	      end
+			end
+      return interpret(list[#list], context(scope, con))
     end
   end,
   ['defun'] = function(list, con)
@@ -183,13 +188,35 @@ local keywords = {
 	['for'] = function(list, con)
 		local label, start, stop = list[1].value,
 			interpret(list[2], con), interpret(list[3], con)
+		local forcontext = context({}, con)
 
 		for i = start, stop do
-			con[label] = i
+			forcontext[label] = i
 			for i = 3, #list do
-				interpret(list[i], con)
+				interpret(list[i], forcontext)
 			end
 		end
+	end,
+
+	['let'] = function(list, con)
+		local letctx = context({}, con)
+
+		letctx[list[1][1].value] = interpret(list[1][2], con)
+		for i = 2, #list - 1 do
+			interpret(list[2], letctx)
+		end
+
+		return interpret(list[#list], letctx)
+	end,
+	['?:'] = function(list, con)
+		if interpret(list[1], con) == true then
+			return interpret(list[2], con)
+		else
+			return interpret(list[3], con)
+		end
+	end,
+	['len'] = function(list, con)
+		return #interpret(list[1], con)
 	end
 }
 
@@ -326,7 +353,7 @@ end
 
 function llispl.pprint(...)
 	for k, v in pairs({...}) do
-		io.write(tostring(v) .. ' ')
+		io.write((type(v) == 'table' or type(v) == 'function') and llispl.stringify(v) or tostring(v) .. ' ')
 	end
 	print()
 	return true
@@ -382,6 +409,73 @@ function llispl.map(tab, fn)
   end
 end
 
+function llispl.head(tbl)
+     return tbl[1]
+end
+
+function llispl.tail(tbl)
+	if #tbl < 1 then
+		return nil
+	else
+		local newtbl = {}
+		local tblsize = #tbl
+		local i = 2
+		while (i <= tblsize) do
+			table.insert(newtbl, i-1, tbl[i])
+			i = i + 1
+		end
+		return newtbl
+	end
+end
+
+function llispl.foldr(func, val, tbl)
+	for i,v in pairs(tbl) do
+		val = func(val, v)
+	end
+	return val
+end
+
+function llispl.foldr2(func, val, tbl)
+	for i,v in pairs(tbl) do
+		val = func(val, v) and val or v
+	end
+	return val
+end
+
+function llispl.reduce(func, tbl)
+	return llispl.foldr2(func, llispl.head(tbl), llispl.tail(tbl))
+end
+
+function llispl.curry(f1, f2)
+	return function(...)
+		return f1(f2(...))
+	end
+end
+
+function llispl.concat(...)
+	local r = ''
+
+	for k, v in pairs({...}) do
+		r = r .. (type(v) == 'table' or type(v) == 'function') and llispl.stringify(v) or tostring(v) .. ' '
+	end
+
+	return r
+end
+
+llispl['operator#mod'] = math.mod;
+llispl['operator#pow'] = math.pow;
+llispl['operator#add'] = function(n,m) return n + m end;
+llispl['operator#sub'] = function(n,m) return n - m end;
+llispl['operator#mul'] = function(n,m) return n * m end;
+llispl['operator#div'] = function(n,m) return n / m end;
+llispl['operator#gt']  = function(n,m) return n > m end;
+llispl['operator#lt']  = function(n,m) return n < m end;
+llispl['operator#eq']  = function(n,m) return n == m end;
+llispl['operator#le']  = function(n,m) return n <= m end;
+llispl['operator#ge']  = function(n,m) return n >= m end;
+llispl['operator#ne']  = function(n,m) return n ~= m end;
+
+
 llispl['map!'] = function(tab, fn)
   for i = 1, #tab do
     tab[i] = fn(tab[i])
@@ -389,7 +483,6 @@ llispl['map!'] = function(tab, fn)
 
   return tab
 end
-
 
 function llispl.load(str)
 	local snip = parse(str)
@@ -436,28 +529,60 @@ function llispl.evalf(file)
 	return llispl.loadf(file)()
 end
 
-function llispl.write(x)
-	io.write(x)
+function llispl.write(...)
+	io.write(...)
 end
 
-
-while true do
-  io.write('-> ')
-  local ok, s = pcall(io.read)
-	if not ok then
-		print()
-		os.exit(1)
+function llispl.slice(w, s, t)
+	local ret = {}
+	for i = s, t or #w do
+		ret[#ret + 1] = w[i]
 	end
 
-	if s then
-		pcall(function()
-			local result = llispl.stringify(interpret(parse(s), gctx))
+	return #ret == 1 and unpack(ret) or ret
+end
 
-		  io.write('return: ')
-		  print(result)
-		end)
-	else
-		print()
-		os.exit(1)
+local ret = {}
+
+function ret.repl()
+	while true do
+	  io.write('-> ')
+	  local ok, s = pcall(io.read)
+		if not ok then
+			print()
+			os.exit(1)
+		end
+
+		if s then
+			pcall(function()
+				local result = llispl.stringify(interpret(parse(s), gctx))
+
+			  io.write('return: ')
+			  print(result)
+			end)
+		else
+			print()
+			os.exit(1)
+		end
 	end
 end
+
+ret.load, ret.loadf, ret.eval, ret.evalf = llispl.load,
+	llispl.loadf, llispl.eval, llispl.evalf
+
+if arg[1] == '--repl' then
+	ret.repl()
+elseif arg[1] then
+	llispl.arg = (function (w, s)
+		local ret = {}
+		for i = s, t or #w do
+			ret[#ret + 1] = w[i]
+		end
+
+		return ret
+	end)(arg, 2)
+
+	ret.evalf(arg[1])
+end
+
+return ret
