@@ -91,6 +91,7 @@ for opt, arg in getopt('hvi:e:E:S', ...) do
 		os.exit(0)
 	elseif opt == 'S' then
 		bliss.eval(io.read '*all')
+		os.exit()
 	end
 end
 
