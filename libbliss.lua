@@ -1,5 +1,6 @@
 #!/usr/bin/env lua
 
+
 function tokenize (exp)
   local sexpr, word, in_str, in_comment = {{}}, '', false, false
 
@@ -334,7 +335,9 @@ function llispl.stringify(...)
         ret = ret .. llispl.stringify(unpack(v)) .. (k == max and '' or ' ')
       elseif type(v) == 'function' then
         ret = ret .. '\'<function>' .. (k == max and '' or ' ')
-      else
+      elseif type(v) == 'thread' then
+			  ret = ret .. '\'<thread>' .. (k == max and '' or ' ')
+			else
         ret = ret .. tostring(v) .. (k == max and '' or ' ')
       end
     end
@@ -573,6 +576,51 @@ end
 
 function llispl.pop(w)
 	return table.remove(w)
+end
+
+function _flatten(what, curr)
+	curr = curr or {}
+	for k, v in pairs(what) do
+		if type(v) == 'table' then
+			_flatten(v, curr)
+		else
+			curr[k] = v
+		end
+	end
+
+	return curr
+end
+
+function llispl.flatten(...)
+	return _flatten({...}, {})
+end
+
+function llispl.parallel(...)
+	local routines = {}
+
+	for k, v in pairs(llispl.flatten(...)) do
+		routines[#routines + 1] = coroutine.create(v)
+	end
+
+	return function(op, ...)
+		if op == 'update' then
+			for i = 1, #routines do
+				if coroutine.status(routines[i]) == 'dead' then
+					routines[i] = nil
+				else
+					coroutine.resume(routines[i], ...)
+				end
+			end
+		elseif op == 'insert' then
+			for k, v in pairs(llispl.flatten(...)) do
+				routines[#routines + 1] = coroutine.create(v)
+			end
+		end
+	end
+end
+
+function llispl.yield()
+	return coroutine.yield()
 end
 
 local ret = {}
