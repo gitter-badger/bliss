@@ -72,7 +72,7 @@ local verstr = [[
 bliss version 1.0
 Copyright © Matheus de Alcantara, 2015, under the MIT license.]]
 
-for opt, arg in getopt('hvi:e:', ...) do
+for opt, arg in getopt('hvi:e:E:S', ...) do
 	if opt == 'h' then
 		print(helpstr)
 		os.exit(0)
@@ -89,6 +89,8 @@ for opt, arg in getopt('hvi:e:', ...) do
 	elseif opt == false then
 		bliss.evalf(arg)
 		os.exit(0)
+	elseif opt == 'S' then
+		bliss.eval(io.read '*all')
 	end
 end
 
