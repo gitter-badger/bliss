@@ -76,6 +76,14 @@ function categorize(tokens)
   end
 end
 
+local function cpt(t)
+	local r = {}
+	for k, v in pairs(t) do
+		r[k] = v
+	end
+	return r
+end
+
 ---
 
 local maths = {
@@ -116,7 +124,9 @@ local tests = {
 }
 
 local keywords = {
-  ['def'] = function(list, con) con[list[1].value] = interpret(list[2], con) end,
+  ['def'] = function(list, con)
+		(con.__parent and con.__parent or con)[list[1].value] = interpret(list[2], con)
+	end,
   ['if'] = function(list, con)
     if interpret(list[1], con) == true or type(interpret(list[1], con)) == 'table' then
       return interpret(list[2], con)
@@ -164,7 +174,8 @@ local keywords = {
       for i = 3, #list do
         interpret(list[i], context(scope, con))
       end
-      return interpret(list[#list], context(scope, con))
+
+			return interpret(list[#list], context(scope, con))
     end
   end,
   ['pcall'] = function(list, con)
@@ -191,8 +202,9 @@ local keywords = {
 	end,
 	['for'] = function(list, con)
 		local label, start, stop = list[1].value,
-			interpret(list[2], con), interpret(list[3], con)
-		local forcontext = context({}, con)
+
+		interpret(list[2], con), interpret(list[3], con)
+		local forcontext = context(cpt(con), con)
 
 		for i = start, stop do
 			forcontext[label] = i
@@ -204,14 +216,15 @@ local keywords = {
 
 	['let'] = function(list, con)
 		local letctx = context({}, con)
-
 		letctx[list[1][1].value] = interpret(list[1][2], con)
-		for i = 2, #list - 1 do
-			interpret(list[2], letctx)
+		if #list > 2 then
+			for i = 2, #list - 1 do
+				interpret(list[2], letctx)
+			end
 		end
-
 		return interpret(list[#list], letctx)
 	end,
+
 	['?:'] = function(list, con)
 		if interpret(list[1], con) == true then
 			return interpret(list[2], con)
@@ -221,6 +234,10 @@ local keywords = {
 	end,
 	['len'] = function(list, con)
 		return #interpret(list[1], con)
+	end,
+	['ret'] = function(list, con)
+		print(list[1].value .. ': ', interpret(list[1], con))
+		return interpret(list[1], con)
 	end
 }
 
@@ -228,7 +245,9 @@ local keywords = {
 ---
 
 function context(scope, parent)
-  return setmetatable({}, {
+  return setmetatable({
+		__parent = parent
+	}, {
     ['__index'] = function(_, k)
       if rawget(_, k) then return rawget(_, k)
       elseif scope and scope[k] then return scope[k]
