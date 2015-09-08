@@ -239,6 +239,15 @@ local keywords = {
 	['ret'] = function(list, con)
 		print(list[1].value .. ': ', interpret(list[1], con))
 		return interpret(list[1], con)
+	end,
+	['throw'] = function(list, con)
+		local r = {}
+
+		for i = 1, #list do
+			r[i] = interpret(list[i], con)
+		end
+
+		error(llispl.stringify(r))
 	end
 }
 
@@ -596,7 +605,7 @@ function llispl.flatten(...)
 end
 
 function llispl.parallel(...)
-	local routines = {}
+	local routines, error_catching_fn = {}, print
 
 	for k, v in pairs(llispl.flatten(...)) do
 		routines[#routines + 1] = coroutine.create(v)
@@ -608,7 +617,12 @@ function llispl.parallel(...)
 				if coroutine.status(routines[i]) == 'dead' then
 					routines[i] = nil
 				else
-					coroutine.resume(routines[i], ...)
+					local ok, err = coroutine.resume(routines[i], ...)
+					if not ok then
+						if error_catching_fn(err) == 'delete' then
+							routines[i] = nil
+						end
+					end
 				end
 			end
 		elseif op == 'insert' then
@@ -623,6 +637,8 @@ function llispl.parallel(...)
 			end
 		elseif op == 'count' then
 			return #routines
+		elseif op == 'set-error-function' then
+			error_catching_fn = ...
 		end
 	end
 end

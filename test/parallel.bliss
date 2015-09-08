@@ -1,7 +1,8 @@
 (def p0 (parallel))
+
 (for i 1 100
 	(p0 'insert (lambda ()
-		(while true (print (yield))))))
+		(print (yield)))))
 
 (for i 1 100
 	(p0 'update i))
