@@ -4,4 +4,5 @@
 		(+ (fib (- x 1)) (fib (- x 2)))))
 
 (pprint "First 10 fib numbers: ")
-(for i 1 10 (pprint (fib i)))
+(for i 1 10
+	(pprint (fib i)))
