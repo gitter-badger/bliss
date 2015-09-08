@@ -2,7 +2,7 @@
 
 (for i 1 100
 	(p0 'insert (lambda ()
-		(print (yield)))))
+		(loop (print (yield))))))
 
 (for i 1 100
 	(p0 'update i))
