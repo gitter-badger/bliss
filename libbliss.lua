@@ -621,6 +621,8 @@ function llispl.parallel(...)
 					routines[i] = nil
 				end
 			end
+		elseif op == 'count' then
+			return #routines
 		end
 	end
 end
