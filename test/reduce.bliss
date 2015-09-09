@@ -1,7 +1,9 @@
 (set! list0 ())
 
-(for i 1 100
-	(insert list0 i))
+(if (== (platform) 'POSIX)
+	(set! list0 (map rand (rep 1 100)))
+	(for i 1 100
+		(insert list0 i)))
 
 (shuffle list0)
 (pprint (reduce #> list0))
