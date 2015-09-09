@@ -235,6 +235,8 @@ local keywords = {
 	end,
 }
 
+keywords.L = keywords.lambda
+
 ---
 
 function context(scope, parent)
@@ -313,6 +315,19 @@ function parse(s)
 end
 
 ---
+
+llispl['#%']   = function(n,m) return n % m end;
+llispl['#^']   = function(n,m) return n ^ m end;
+llispl['#+']   = function(n,m) return n + m end;
+llispl['#-']   = function(n,m) return n - m end;
+llispl['#*']   = function(n,m) return n * m end;
+llispl['#/']   = function(n,m) return n / m end;
+llispl['#>']   = function(n,m) return n > m end;
+llispl['#<']   = function(n,m) return n < m end;
+llispl['#==']  = function(n,m) return n == m end;
+llispl['#<=']  = function(n,m) return n <= m end;
+llispl['#>=']  = function(n,m) return n >= m end;
+llispl['#!=']  = function(n,m) return n ~= m end;
 
 function llispl.stringify(...)
 	local ret = '('
@@ -513,20 +528,6 @@ function llispl.reverse(list)
 		return ret
 	end
 end
-
-llispl['#%']   = function(n,m) return n % m end;
-llispl['#^']   = function(n,m) return n ^ m end;
-llispl['#+']   = function(n,m) return n + m end;
-llispl['#-']   = function(n,m) return n - m end;
-llispl['#*']   = function(n,m) return n * m end;
-llispl['#/']   = function(n,m) return n / m end;
-llispl['#>']   = function(n,m) return n > m end;
-llispl['#<']   = function(n,m) return n < m end;
-llispl['#==']  = function(n,m) return n == m end;
-llispl['#<=']  = function(n,m) return n <= m end;
-llispl['#>=']  = function(n,m) return n >= m end;
-llispl['#!=']  = function(n,m) return n ~= m end;
-
 
 llispl['map!'] = function(fn, tab)
 	for i = 1, #tab do
