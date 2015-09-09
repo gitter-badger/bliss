@@ -531,7 +531,7 @@ function llispl.reverse(list)
 	end
 end
 
-llispl['#%'] =   function(n,m) return n % m end;
+llispl['#%']   = function(n,m) return n % m end;
 llispl['#^']   = function(n,m) return n ^ m end;
 llispl['#+']   = function(n,m) return n + m end;
 llispl['#-']   = function(n,m) return n - m end;
