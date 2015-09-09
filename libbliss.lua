@@ -693,6 +693,15 @@ function llispl.rand()
 		return data
 	end
 
+	local random = io.open('/dev/random', 'rb')
+
+	if random then
+		local data = random:read(1):byte()
+		urandom:close()
+
+		return data
+	end
+
 	return math.random(100)
 end
 
