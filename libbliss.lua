@@ -467,15 +467,19 @@ function llispl.tail(tbl)
 	end
 end
 
+function llispl.select(list, what)
+	return llispl.slice(list, what, what)
+end
+
 function llispl.foldr(func, val, tbl)
-	for i,v in pairs(tbl) do
+	for i, v in pairs(tbl) do
 		val = func(val, v)
 	end
 	return val
 end
 
 function llispl.foldr2(func, val, tbl)
-	for i,v in pairs(tbl) do
+	for i, v in pairs(tbl) do
 		val = func(val, v) and val or v
 	end
 	return val
@@ -527,14 +531,14 @@ function llispl.reverse(list)
 	end
 end
 
-llispl['#%'] = math.mod;
-llispl['#^'] = math.pow;
-llispl['#+'] = function(n,m) return n + m end;
-llispl['#-'] = function(n,m) return n - m end;
-llispl['#*'] = function(n,m) return n * m end;
-llispl['#/'] = function(n,m) return n / m end;
-llispl['#>']  = function(n,m) return n > m end;
-llispl['#<']  = function(n,m) return n < m end;
+llispl['#%'] =   function(n,m) return n % m end;
+llispl['#^']   = function(n,m) return n ^ m end;
+llispl['#+']   = function(n,m) return n + m end;
+llispl['#-']   = function(n,m) return n - m end;
+llispl['#*']   = function(n,m) return n * m end;
+llispl['#/']   = function(n,m) return n / m end;
+llispl['#>']   = function(n,m) return n > m end;
+llispl['#<']   = function(n,m) return n < m end;
 llispl['#==']  = function(n,m) return n == m end;
 llispl['#<=']  = function(n,m) return n <= m end;
 llispl['#>=']  = function(n,m) return n >= m end;
