@@ -1,0 +1,8 @@
+(def list0 ())
+
+(for i 1 100
+	(insert list0 i))
+
+(shuffle list0)
+(pprint (reduce #> list0))
+(pprint (reduce #< list0))

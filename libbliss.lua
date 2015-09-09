@@ -636,6 +636,22 @@ function llispl.flatten(...)
 	return _flatten({...}, {})
 end
 
+function llispl.insert(w, ...)
+	for k, v in pairs(_flatten {...}) do
+		w[#w + 1] = v
+	end
+end
+
+function llispl.shuffle(t)
+	math.randomseed(os.time())
+  local j
+
+  for i = #t, 2, -1 do
+      j = math.random(i)
+      t[i], t[j] = t[j], t[i]
+  end
+end
+
 function llispl.parallel(...)
 	local routines, error_catching_fn = {}, print
 
