@@ -380,26 +380,26 @@ function llispl.treeify(list, depth, ig)
 end
 
 function llispl.print(...)
-  print(llispl.stringify({...}))
-  return true
+	print(llispl.stringify({...}))
+	return true
 end
 
 function llispl.pprint(...)
 	for k, v in pairs({...}) do
 		io.write((type(v) == 'table' or type(v) == 'function') and llispl.stringify(v) or tostring(v) .. ' ')
-	end
+		end
 	print()
 	return true
 end
 
 function llispl.split(str, sep)
-  local sep, fields = sep or ":", {}
-  local pattern = string.format("([^%s]+)", sep)
-  str:gsub(pattern, function(c)
-    fields[#fields+1] = c
-  end)
+	local sep, fields = sep or ":", {}
+	local pattern = string.format("([^%s]+)", sep)
+	str:gsub(pattern, function(c)
+		fields[#fields+1] = c
+	end)
 
-  return fields
+	return fields
 end
 
 function llispl.exit(status)
@@ -407,43 +407,43 @@ function llispl.exit(status)
 end
 
 function llispl.join(...)
-  local ret = {}
-  llispl.print(...)
-  for k, v in pairs({...}) do
-    if type(v) == 'table' then
-      for l, b in pairs(v) do
+	local ret = {}
+	llispl.print(...)
+	for k, v in pairs({...}) do
+		if type(v) == 'table' then
+			for l, b in pairs(v) do
 
-        ret[#ret + 1] = b
-      end
-    else
-      ret[#ret + 1] = v
-    end
-  end
+				ret[#ret + 1] = b
+			end
+		else
+			ret[#ret + 1] = v
+		end
+	end
 
-  return ret
+	return ret
 end
 
 function llispl.getm(t, w)
-  return t[w]
+	return t[w]
 end
 
 function llispl.setm(t, w, v)
-  t[w] = v
-  return t[w]
+	t[w] = v
+	return t[w]
 end
 
 function llispl.getg(w)
-  return _ENV[w]
+	return _ENV[w]
 end
 
 function llispl.map(fn, tab)
-  for i = 1, #tab do
-    fn(tab[i])
-  end
+	for i = 1, #tab do
+		fn(tab[i])
+	end
 end
 
 function llispl.head(tbl)
-     return tbl[1]
+	return tbl[1]
 end
 
 function llispl.tail(tbl)
@@ -510,11 +510,11 @@ llispl['operator#ne']  = function(n,m) return n ~= m end;
 
 
 llispl['map!'] = function(fn, tab)
-  for i = 1, #tab do
-    tab[i] = fn(tab[i])
-  end
+	for i = 1, #tab do
+		tab[i] = fn(tab[i])
+	end
 
-  return tab
+	return tab
 end
 
 function llispl.load(str)
