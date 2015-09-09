@@ -501,6 +501,32 @@ function llispl.concat(...)
 	return r
 end
 
+function llispl.rep(what, times)
+	if type(what) == 'string' then
+		return what:rep(times)
+	else
+		local ret = {}
+		for i = 1, times do
+			ret[#ret + 1] = what
+		end
+
+		return ret
+	end
+end
+
+function llispl.reverse(list)
+	if type(list) == 'string' then
+		return list:reverse()
+	else
+		local ret = {}
+		for i = #list, 1, -1 do
+			ret[#ret + 1] = list[i]
+		end
+
+		return ret
+	end
+end
+
 llispl['#%'] = math.mod;
 llispl['#^'] = math.pow;
 llispl['#+'] = function(n,m) return n + m end;
