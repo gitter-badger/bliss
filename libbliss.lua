@@ -88,44 +88,28 @@ end
 ---
 
 local maths = {
-	['+'] = function(l, c)
-		local acc = 0
-
-		for i = 1, #l do
-			acc = acc + interpret(l[i], c)
-		end
-
-		return acc
-	end,
-	['-'] = function(l, c)
-		return interpret(l[1], c) - interpret(l[2], c)
-	end,
-	['*'] = function(l, c)
-		local acc = interpret(l[1], c)
-
-		for i = 2, #l do
-			acc = acc * interpret(l[i], c)
-		end
-
-		return acc
-	end,
-	['/'] = function(l, c) return interpret(l[1], c) / interpret(l[2], c) end,
-	['%'] = function(l, c) return interpret(l[1], c) % interpret(l[2], c) end,
-	['**'] = function(l, c) return interpret(l[1], c) ^ interpret(l[2], c) end,
+	['+']  = function(l, c) return interpret(l[1], c) + interpret(l[2], c)  end,
+	['-']  = function(l, c) return interpret(l[1], c) - interpret(l[2], c)  end,
+	['*']  = function(l, c) return interpret(l[1], c) * interpret(l[2], c)  end,
+	['/']  = function(l, c) return interpret(l[1], c) / interpret(l[2], c)  end,
+	['%']  = function(l, c) return interpret(l[1], c) % interpret(l[2], c)  end,
+	['**'] = function(l, c) return interpret(l[1], c) ^ interpret(l[2], c)  end,
 }
 
 local tests = {
-	['=='] = function(list, con) return interpret(list[1], con) == interpret(list[2], con) end,
-	['!='] = function(list, con) return interpret(list[1], con) ~= interpret(list[2], con) end,
-	['>='] = function(list, con) return interpret(list[1], con) >= interpret(list[2], con) end,
-	['<='] = function(list, con) return interpret(list[1], con) <= interpret(list[2], con) end,
-	['>']  = function(list, con) return interpret(list[1], con) > interpret(list[2], con)  end,
-	['<']  = function(list, con) return interpret(list[1], con) < interpret(list[2], con)  end,
-	['!']  = function(list, con) return not interpret(list[1], con)                        end
+	['==']     = function(list, con) return interpret(list[1], con) == interpret(list[2], con) end,
+	['!=']     = function(list, con) return interpret(list[1], con) ~= interpret(list[2], con) end,
+	['>=']     = function(list, con) return interpret(list[1], con) >= interpret(list[2], con) end,
+	['<=']     = function(list, con) return interpret(list[1], con) <= interpret(list[2], con) end,
+	['>']      = function(list, con) return interpret(list[1], con) > interpret(list[2], con)  end,
+	['<']      = function(list, con) return interpret(list[1], con) < interpret(list[2], con)  end,
+	['!']      = function(list, con) return not interpret(list[1], con)                        end,
+	['nil?']   = function(list, con) return interpret(list[1], con) == nil                     end,
+	['bound?'] = function(list, con) return interpret(list[1], con) ~= nil                     end
 }
 
 local keywords = {
-	['def'] = function(list, con)
+	['set!'] = function(list, con)
 		(con.__parent and con.__parent or con)[list[1].value] = interpret(list[2], con)
 	end,
 	['if'] = function(list, con)
@@ -214,7 +198,6 @@ local keywords = {
 			end
 		end
 	end,
-
 	['let'] = function(list, con)
 		local letctx = context({}, con)
 		letctx[list[1][1].value] = interpret(list[1][2], con)
@@ -225,7 +208,6 @@ local keywords = {
 		end
 		return interpret(list[#list], letctx)
 	end,
-
 	['?:'] = function(list, con)
 		if interpret(list[1], con) == true then
 			return interpret(list[2], con)
@@ -242,15 +224,16 @@ local keywords = {
 	end,
 	['throw'] = function(list, con)
 		local r = {}
-
 		for i = 1, #list do
 			r[i] = interpret(list[i], con)
 		end
 
 		error(llispl.stringify(r))
-	end
+	end,
+	['decl'] = function(list, con)
+		(con.__parent and con.__parent or con)[list[1].value] = 0
+	end,
 }
-
 
 ---
 

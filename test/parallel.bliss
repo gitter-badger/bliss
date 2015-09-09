@@ -1,4 +1,4 @@
-(def p0 (parallel))
+(set! p0 (parallel))
 
 (for i 1 100
 	(p0 'insert (lambda ()
