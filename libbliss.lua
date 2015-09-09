@@ -111,7 +111,7 @@ local maths = {
   end,
   ['/'] = function(l, c) return interpret(l[1], c) / interpret(l[2], c) end,
   ['%'] = function(l, c) return interpret(l[1], c) % interpret(l[2], c) end,
-  ['**'] = function(l, c) return interpret(l[1], c) ^ interpret(l[2], c) end,
+  ['**'] = function(l, c) return interpret(l[1], c) ^ interpret(l[2], c) end
 }
 
 local tests = {
