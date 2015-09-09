@@ -233,6 +233,14 @@ local keywords = {
 	['decl'] = function(list, con)
 		(con.__parent and con.__parent or con)[list[1].value] = 0
 	end,
+	['$'] = function(list, con)
+		local ret = {}
+		for i = 1, #list do
+			ret[#ret + 1] = interpret(list[i], con)
+		end
+
+		return ret
+	end
 }
 
 keywords.L = keywords.lambda
@@ -329,12 +337,29 @@ llispl['#<=']  = function(n,m) return n <= m end;
 llispl['#>=']  = function(n,m) return n >= m end;
 llispl['#!=']  = function(n,m) return n ~= m end;
 
-function llispl.stringify(...)
+function llispl.stringify (...)
 	local ret = '('
 	if #({...}) == 1 and type(({...})[1]) == 'table' then
 		return llispl.stringify(unpack(({...})[1]))
 	else
 		local max = (function(x) local r = 0; for k, v in pairs(x) do r = r + 1 end; return r end)({...})
+
+		if max == 1 then
+			local v = ({...})[1]
+
+			if type(v) == 'string' then
+				return '"' .. v .. '"'
+			elseif type(v) == 'table' then
+				return llispl.stringify(unpack(v)) .. (k == max and '' or ' ')
+			elseif type(v) == 'function' then
+				return '\'<function>'
+			elseif type(v) == 'thread' then
+				return '\'<thread>'
+			else
+				return tostring(v)
+			end
+		end
+
 		for k, v in pairs({...}) do
 			if type(v) == 'string' then
 				ret = ret .. '"' .. v .. '"' .. (k == max and '' or ' ')
@@ -423,19 +448,6 @@ function llispl.join(...)
 	return ret
 end
 
-function llispl.getm(t, w)
-	return t[w]
-end
-
-function llispl.setm(t, w, v)
-	t[w] = v
-	return t[w]
-end
-
-function llispl.getg(w)
-	return _ENV[w]
-end
-
 function llispl.map(fn, tab)
 	local ret = {}
 
@@ -446,37 +458,11 @@ function llispl.map(fn, tab)
 	return ret
 end
 
-function llispl.head(tbl)
-	return tbl[1]
-end
-
-function llispl.tail(tbl)
-	if #tbl < 1 then
-		return nil
-	else
-		local newtbl = {}
-		local tblsize = #tbl
-		local i = 2
-		while (i <= tblsize) do
-			table.insert(newtbl, i-1, tbl[i])
-			i = i + 1
-		end
-		return newtbl
-	end
-end
-
 function llispl.select(list, what)
 	return llispl.slice(list, what, what)
 end
 
-function llispl.foldr(func, val, tbl)
-	for i, v in pairs(tbl) do
-		val = func(val, v)
-	end
-	return val
-end
-
-function llispl.foldr2(func, val, tbl)
+function llispl.fold(func, val, tbl)
 	for i, v in pairs(tbl) do
 		val = func(val, v) and val or v
 	end
@@ -484,7 +470,7 @@ function llispl.foldr2(func, val, tbl)
 end
 
 function llispl.reduce(func, tbl)
-	return llispl.foldr2(func, llispl.head(tbl), llispl.tail(tbl))
+	return llispl.fold(func, tbl[1], llispl.slice(tbl, 2, #tbl))
 end
 
 function llispl.curry(f1, f2)
@@ -595,12 +581,8 @@ function llispl.slice(w, s, t)
 	return #ret == 1 and unpack(ret) or ret
 end
 
-function llispl.push(w, v)
-	w[#w + 1] = v
-end
-
 function llispl.pop(w)
-	return table.remove(w)
+	return table.remove(w, 1)
 end
 
 function _flatten(what, curr)
@@ -631,8 +613,8 @@ function llispl.shuffle(t)
   local j
 
   for i = #t, 2, -1 do
-      j = math.random(i)
-      t[i], t[j] = t[j], t[i]
+    j = math.random(i)
+    t[i], t[j] = t[j], t[i]
   end
 end
 
@@ -692,6 +674,30 @@ function llispl.luasym(w)
 	end
 
 	return ret
+end
+
+function llispl.rand()
+	local ok, err = pcall(require, 'socket')
+	if not ok then
+		math.randomseed(os.time())
+	else
+		math.randomseed(err.gettime() ^ err.gettime())
+	end
+
+	local urandom = io.open('/dev/urandom', 'rb')
+
+	if urandom then
+		local data = urandom:read(1):byte()
+		urandom:close()
+
+		return data
+	end
+
+	return math.random(100)
+end
+
+function llispl.randseed(x)
+	math.randomseed(x)
 end
 
 local ret = {}
