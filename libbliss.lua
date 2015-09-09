@@ -280,7 +280,9 @@ end)(maths, keywords, tests)
 
 local function map(t, f)
 	local x = {}
-	for k, v in pairs(t) do x[k] = f(k, v) end
+	for k, v in pairs(t) do
+		x[k] = f(k, v)
+	end
 	return x
 end
 
@@ -437,9 +439,13 @@ function llispl.getg(w)
 end
 
 function llispl.map(fn, tab)
+	local ret = {}
+
 	for i = 1, #tab do
-		fn(tab[i])
+		ret[#ret + 1] = fn(tab[i])
 	end
+
+	return ret
 end
 
 function llispl.head(tbl)
@@ -495,18 +501,18 @@ function llispl.concat(...)
 	return r
 end
 
-llispl['operator#mod'] = math.mod;
-llispl['operator#pow'] = math.pow;
-llispl['operator#add'] = function(n,m) return n + m end;
-llispl['operator#sub'] = function(n,m) return n - m end;
-llispl['operator#mul'] = function(n,m) return n * m end;
-llispl['operator#div'] = function(n,m) return n / m end;
-llispl['operator#gt']  = function(n,m) return n > m end;
-llispl['operator#lt']  = function(n,m) return n < m end;
-llispl['operator#eq']  = function(n,m) return n == m end;
-llispl['operator#le']  = function(n,m) return n <= m end;
-llispl['operator#ge']  = function(n,m) return n >= m end;
-llispl['operator#ne']  = function(n,m) return n ~= m end;
+llispl['#%'] = math.mod;
+llispl['#^'] = math.pow;
+llispl['#+'] = function(n,m) return n + m end;
+llispl['#-'] = function(n,m) return n - m end;
+llispl['#*'] = function(n,m) return n * m end;
+llispl['#/'] = function(n,m) return n / m end;
+llispl['#>']  = function(n,m) return n > m end;
+llispl['#<']  = function(n,m) return n < m end;
+llispl['#==']  = function(n,m) return n == m end;
+llispl['#<=']  = function(n,m) return n <= m end;
+llispl['#>=']  = function(n,m) return n >= m end;
+llispl['#!=']  = function(n,m) return n ~= m end;
 
 
 llispl['map!'] = function(fn, tab)
