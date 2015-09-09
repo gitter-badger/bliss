@@ -105,7 +105,10 @@ local tests = {
 	['<']      = function(list, con) return interpret(list[1], con) < interpret(list[2], con)  end,
 	['!']      = function(list, con) return not interpret(list[1], con)                        end,
 	['nil?']   = function(list, con) return interpret(list[1], con) == nil                     end,
-	['bound?'] = function(list, con) return interpret(list[1], con) ~= nil                     end
+	['bound?'] = function(list, con) return interpret(list[1], con) ~= nil                     end,
+
+	['||'] = function(list, con) return (interpret(list[1], con) == true) or (interpret(list[2], con) == true) end,
+	['&&'] = function(list, con) return (interpret(list[1], con) == true) and (interpret(list[2], con) == true) end,
 }
 
 local keywords = {
@@ -473,6 +476,7 @@ function llispl.reduce(func, tbl)
 	return llispl.fold(func, tbl[1], llispl.slice(tbl, 2, #tbl))
 end
 
+
 function llispl.curry(f1, f2)
 	return function(...)
 		return f1(f2(...))
@@ -707,6 +711,13 @@ end
 
 function llispl.randseed(x)
 	math.randomseed(x)
+end
+
+function llispl.platform()
+	return package.config and
+		(package.config:sub(1, 1) == '\\' and 'NT' or
+		package.config:sub(1, 1) == '/'  and 'POSIX')
+		or 'Unsupported'
 end
 
 local ret = {}
