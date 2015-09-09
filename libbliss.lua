@@ -1,5 +1,5 @@
 #!/usr/bin/env lua
-
+-- Bliss is a functional programming language.
 
 function tokenize (exp)
 	local sexpr, word, in_str, in_comment = {{}}, '', false, false
